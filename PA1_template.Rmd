@@ -1,20 +1,112 @@
-# Reproducible Research: Peer Assessment 1
+#Loading activity monitoring data
+```{r loadfile}
+setwd("d:/r/rr")
+df <- read.csv("activity.csv",na.strings="NA")
+nrow(df)
+```
+#Cleaning the data by removing NA and summarizing to get mean and median
+```{r cleanfile}
+trdf <- df[!is.na(df$steps),]
+library(plyr)
+summarize_act <- ddply(trdf, .(date), summarize, Total=sum(steps), Mean=mean(steps), Median = median(steps))
+summarize_act
+totalmean <- mean(summarize_act$Total)
+totalmean
+totalmedian <- median(summarize_act$Total)
+totalmedian
+```
+#Draw histogram and plot
+```{r plotting}
+library(ggplot2)
+ggplot(summarize_act,aes(x=Total)) + geom_histogram()
+summarize_int <- ddply(trdf, .(interval), summarize, Total=sum(steps), Mean=mean(steps), Median = median(steps))
+ggplot(summarize_int,aes(x=interval,y=Mean)) + geom_line()
+```
+```{r maxvalue}
+#Maximum value
+summarize_int[summarize_int$Mean==max(summarize_int$Mean),]
+```
+
+#values with NA
+```{r listandimputena}
+nrow(df[is.na(df),])
+
+md <- merge(df,summarize_int,all=FALSE)
+#impute.mean <- function(x,y) replace(x, is.na(x), y)
+for (i in 1:nrow(md))
+  {
+
+  if (is.na(md$steps[i]))
+    {
+     md$steps[i] <- md$Mean[i]
+     cat(md$steps[i])
+    }
+  }
+
+newmd <- md
+head(newmd)
+```
+## show mean and median with NA populated with mean
+```{r imputedmean}
+summarize_act_new <- ddply(newmd, .(date), summarize, Total=sum(steps), Mean=mean(steps), Median = median(steps))
+
+ggplot(newmd,aes(x=Total)) + geom_histogram()
+#summarize_act_new
+totalmean_new <- mean(summarize_act_new$Total)
+totalmean_new
+totalmedian_new <- median(summarize_act_new$Total)
+totalmedian_new
+```
+##segregate weekend and weekday
+```{r weeksep}
+wkdaymd <- cbind(newmd,weekdays(as.Date(newmd$date)))
+colnames(wkdaymd) <- c("interval","steps","date","Total","Mean","Median","wkday")
+weekend <- subset(wkdaymd,(wkday=="Saturday"|wkday=="Sunday"))
+weekday <- subset(wkdaymd,!(wkday=="Saturday"|wkday=="Sunday"))
+
+summarize_int_wkend <- ddply(weekend, .(interval), summarize, Total=sum(steps), Mean=mean(steps), Median = median(steps))
+
+summarize_int_wkday <- ddply(weekday, .(interval), summarize, Total=sum(steps), Mean=mean(steps), Median = median(steps))
 
 
-## Loading and preprocessing the data
+
+p1 <- ggplot(summarize_int_wkend, aes(x=interval, y=Mean)) +
+    geom_line() +
+    ggtitle("weekend")
+
+p2 <- ggplot(summarize_int_wkday, aes(x=interval, y=Mean)) +
+    geom_line() +
+    ggtitle("weekday")
+## Code for multiplot taken from the book R-cookbook Winston Chang
+multiplot <- function(..., plotlist=NULL, cols) {
+    require(grid)
+
+    # Make a list from the ... arguments and plotlist
+    plots <- c(list(...), plotlist)
+
+    numPlots = length(plots)
+
+    # Make the panel
+    plotCols = cols                          # Number of columns of plots
+    plotRows = ceiling(numPlots/plotCols) # Number of rows needed, calculated from # of cols
+
+    # Set up the page
+    grid.newpage()
+    pushViewport(viewport(layout = grid.layout(plotRows, plotCols)))
+    vplayout <- function(x, y)
+        viewport(layout.pos.row = x, layout.pos.col = y)
+
+    # Make each plot, in the correct location
+    for (i in 1:numPlots) {
+        curRow = ceiling(i/plotCols)
+        curCol = (i-1) %% plotCols + 1
+        print(plots[[i]], vp = vplayout(curRow, curCol ))
+    }
+
+}
+
+multiplot(p1, p2,cols=1)
+
+```
 
 
-
-## What is mean total number of steps taken per day?
-
-
-
-## What is the average daily activity pattern?
-
-
-
-## Imputing missing values
-
-
-
-## Are there differences in activity patterns between weekdays and weekends?
